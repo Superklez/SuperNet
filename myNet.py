@@ -86,4 +86,6 @@ class NeuralNetwork():
     def plot_cost(self):
         plt.figure(dpi=100)
         plt.plot(self.costs)
+        plt.xlabel('Iteration')
+        plt.ylabel('Cost')
         plt.show()
