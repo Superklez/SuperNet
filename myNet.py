@@ -3,6 +3,13 @@ import matplotlib.pyplot as plt
 
 class NeuralNetwork():
 
+    '''
+    This is a simple deep neural network
+    with no regularization.
+
+    layer_dims = [n_x, n_h1, n_h2, ... , n_y]
+    '''
+
     def __init__(self, alpha, layer_dims):
         self.alpha = alpha
         self.L = len(layer_dims) - 1
