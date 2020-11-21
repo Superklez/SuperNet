@@ -8,6 +8,7 @@ class NeuralNetwork():
     L2 and dropout regularization if specified.
 
     layer_dims = [n_x, n_h1, n_h2, ... , n_y]
+    and L = len(layer_dims[1:])
     '''
 
     def __init__(self, layer_dims):
@@ -65,27 +66,13 @@ class NeuralNetwork():
         self.db = {}
         self.dA['dA' + str(self.L)] = -Y/self.A['A' + str(self.L)] + (1-Y)/(1-self.A['A' + str(self.L)])
         self.dZ['dZ' + str(self.L)] = self.dA['dA' + str(self.L)] * self.sigmoid_derivative(self.Z['Z' + str(self.L)])
-        # IF NO REGULARIZATION
-        if C == 0:
-            self.dW['dW' + str(self.L)] = 1/m * np.dot(self.dZ['dZ' + str(self.L)], self.A['A' + str(self.L-1)].T)
-        # IF WITH REGULARIZATION
-        if C != 0:
-            backprop_term = 1/m * np.dot(self.dZ['dZ' + str(self.L)], self.A['A' + str(self.L-1)].T)
-            reg_term = C/m * self.W['W' + str(self.L)]
-            self.dW['dW' + str(self.L)] = backprop_term + reg_term
+        self.dW['dW' + str(self.L)] = 1/m * np.dot(self.dZ['dZ' + str(self.L)], self.A['A' + str(self.L-1)].T) + C/m * self.W['W' + str(self.L)]
         self.db['db' + str(self.L)] = 1/m * np.sum(self.dZ['dZ' + str(self.L)], axis=1, keepdims=True)
 
         for l in reversed(range(1, self.L)):
             self.dA['dA' + str(l)] = np.dot(self.W['W' + str(l + 1)].T, self.dZ['dZ' + str(l + 1)])
             self.dZ['dZ' + str(l)] = self.dA['dA' + str(l)] * self.relu_derivative(self.Z['Z' + str(l)])
-            # IF NO REGULARIZATION
-            if C == 0:
-                self.dW['dW' + str(l)] = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T)
-            # IF WITH REGULARIZATION
-            if C != 0:
-                backprop_term = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T)
-                reg_term = C/m * self.W['W' + str(l)]
-                self.dW['dW' + str(l)] = backprop_term + reg_term
+            self.dW['dW' + str(l)] = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T) + C/m * self.W['W' + str(l)]
             self.db['db' + str(l)] = 1/m * np.sum(self.dZ['dZ' + str(l)], axis=1, keepdims=True)
 
     def update_parameters(self, alpha):
@@ -102,29 +89,24 @@ class NeuralNetwork():
         self.W = {}
         self.b = {}
         for l in range(1, len(self.layer_dims)):
-            if activation.lower() == 'relu':
-                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
-            elif activation.lower() == 'tanh':
-                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) / np.sqrt(1 / self.layer_dims[l-1])
-            elif activation.lower() == 'other':
-                pass
+#            if activation.lower() == 'relu':
+#                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
+#            elif activation.lower() == 'tanh':
+#                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) / np.sqrt(1 / self.layer_dims[l-1])
+#            elif activation.lower() == 'other':
+#                pass
+            self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
             self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
 
         self.costs = []
 
         # GRADIENT DESCENT
         for i in range(1, epochs+1):
-            if C != 0 or keep_prob != 1:
-                self.forward_propagation_with_regularization()
-                self.backward_propagation_with_regularization()
-                cost = self.get_cost(y_train, C)
-                self.costs.append(cost)
-            else:
-                self.forward_propagation(X_train)
-                self.backward_propagation(y_train)
-                self.update_parameters(alpha)
-                cost = self.get_cost(y_train, C)
-                self.costs.append(cost)
+            self.forward_propagation(X_train)
+            self.backward_propagation(y_train, C=C)
+            self.update_parameters(alpha)
+            cost = self.get_cost(y_train, C)
+            self.costs.append(cost)
 
             # PRINT COST FOR FEEDBACK WHILE TRAINING
             if verbose != 0:
