@@ -12,14 +12,8 @@ class NeuralNetwork():
 
     def __init__(self, alpha, layer_dims):
         self.alpha = alpha
+        self.layer_dims = layer_dims
         self.L = len(layer_dims) - 1
-        self.n = {}
-        self.W = {}
-        self.b = {}
-        for l in range(1, len(layer_dims)):
-            self.n['n' + str(l)] = layer_dims[l]
-            self.W['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l-1]) / np.sqrt(layer_dims[l-1])
-            self.b['b' + str(l)] = np.zeros((layer_dims[l], 1))
 
     @staticmethod
     def sigmoid(z):
@@ -43,7 +37,7 @@ class NeuralNetwork():
         logprobs = Y * np.log(self.A['A' + str(self.L)]) + (1 - Y) * np.log(1 - self.A['A' + str(self.L)])
         return -1/self.m * np.sum(logprobs)
 
-    def forward_propagation(self, X):
+    def forward_propagation(self, X, activation='relu'):
         self.Z = {}
         self.A = {}
         self.A['A0'] = X
@@ -53,7 +47,7 @@ class NeuralNetwork():
         self.Z['Z' + str(self.L)] = np.dot(self.W['W' + str(self.L)], self.A['A' + str(self.L-1)]) + self.b['b' + str(self.L)]
         self.A['A' + str(self.L)] = self.sigmoid(self.Z['Z' + str(self.L)])
 
-    def backward_propagation(self, Y):
+    def backward_propagation(self, Y, activation='relu'):
         self.dZ = {}
         self.dA = {}
         self.dW = {}
@@ -73,9 +67,26 @@ class NeuralNetwork():
             self.W['W' + str(l)] = self.W['W' + str(l)] - self.alpha * self.dW['dW' + str(l)]
             self.b['b' + str(l)] = self.b['b' + str(l)] - self.alpha * self.db['db' + str(l)]
 
-    def train(self, X_train, y_train, max_iters):
+    def train(self, X_train, y_train, max_iters, activation='relu', random_state=None):
+        # SET RANDOM STATE
+        if random_state != None:
+            np.random.seed(random_state)
+
+        # WEIGHT INITIALIZATION
+        self.W = {}
+        self.b = {}
+        for l in range(1, len(self.layer_dims)):
+            if activation.lower() == 'relu':
+                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
+            elif activation.lower() == 'tanh':
+                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) / np.sqrt(1 / self.layer_dims[l-1])
+            elif activation.lower() == 'other':
+                pass
+            self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
+
         self.m = X_train.shape[-1]
         self.costs = []
+
         for _ in range(max_iters):
             self.forward_propagation(X_train)
             self.backward_propagation(y_train)
