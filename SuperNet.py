@@ -47,6 +47,9 @@ class NeuralNetwork():
         self.Z['Z' + str(self.L)] = np.dot(self.W['W' + str(self.L)], self.A['A' + str(self.L-1)]) + self.b['b' + str(self.L)]
         self.A['A' + str(self.L)] = self.sigmoid(self.Z['Z' + str(self.L)])
 
+    def forward_propagation_with_regularization(self, X, activation='relu', C=0, keep_prob=1):
+        pass
+
     def backward_propagation(self, Y, activation='relu'):
         m = Y.shape[1]
         self.dZ = {}
@@ -63,12 +66,15 @@ class NeuralNetwork():
             self.dW['dW' + str(l)] = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T)
             self.db['db' + str(l)] = 1/m * np.sum(self.dZ['dZ' + str(l)], axis=1, keepdims=True)
 
+    def backward_propagation_with_regularization(self, Y, activation='relu', C=0, keep_prob=1):
+        pass
+
     def update_parameters(self, alpha):
         for l in range(1, self.L+1):
             self.W['W' + str(l)] = self.W['W' + str(l)] - alpha * self.dW['dW' + str(l)]
             self.b['b' + str(l)] = self.b['b' + str(l)] - alpha * self.db['db' + str(l)]
 
-    def train(self, X_train, y_train, epochs, alpha=0.01, activation='relu', C=0, keep_prop=1, random_state=None, verbose=0):
+    def train(self, X_train, y_train, epochs, alpha=0.01, activation='relu', C=0, keep_prob=1, random_state=None, verbose=0):
         # SET RANDOM STATE
         if random_state != None:
             np.random.seed(random_state)
@@ -89,11 +95,18 @@ class NeuralNetwork():
 
         # GRADIENT DESCENT
         for i in range(1, epochs+1):
-            self.forward_propagation(X_train)
-            self.backward_propagation(y_train)
-            self.update_parameters(alpha)
-            cost = self.get_cost(y_train)
-            self.costs.append(cost)
+            if C != 0 or keep_prob != 1:
+                self.forward_propagation_with_regularization()
+                self.backward_propagation_with_regularization()
+                cost = self.get_cost(y_train)
+                self.costs.append(cost)
+            else:
+                self.forward_propagation(X_train)
+                self.backward_propagation(y_train)
+                self.update_parameters(alpha)
+                cost = self.get_cost(y_train)
+                self.costs.append(cost)
+
             # PRINT COST FOR FEEDBACK WHILE TRAINING
             if verbose != 0:
                 verbose = int(verbose)
