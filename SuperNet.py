@@ -64,14 +64,14 @@ class NeuralNetwork():
         self.dA = {}
         self.dW = {}
         self.db = {}
-        self.dA['dA' + str(self.L)] = -Y/self.A['A' + str(self.L)] + (1-Y)/(1-self.A['A' + str(self.L)])
-        self.dZ['dZ' + str(self.L)] = self.dA['dA' + str(self.L)] * self.sigmoid_derivative(self.Z['Z' + str(self.L)])
+        self.dA['dA' + str(self.L)] = -np.divide(Y, self.A['A' + str(self.L)]) + np.divide(1 - Y, 1 - self.A['A' + str(self.L)])
+        self.dZ['dZ' + str(self.L)] = np.multiply(self.dA['dA' + str(self.L)], self.sigmoid_derivative(self.Z['Z' + str(self.L)]))
         self.dW['dW' + str(self.L)] = 1/m * np.dot(self.dZ['dZ' + str(self.L)], self.A['A' + str(self.L-1)].T) + C/m * self.W['W' + str(self.L)]
         self.db['db' + str(self.L)] = 1/m * np.sum(self.dZ['dZ' + str(self.L)], axis=1, keepdims=True)
 
         for l in reversed(range(1, self.L)):
             self.dA['dA' + str(l)] = np.dot(self.W['W' + str(l + 1)].T, self.dZ['dZ' + str(l + 1)])
-            self.dZ['dZ' + str(l)] = self.dA['dA' + str(l)] * self.relu_derivative(self.Z['Z' + str(l)])
+            self.dZ['dZ' + str(l)] = np.multiply(self.dA['dA' + str(l)], self.relu_derivative(self.Z['Z' + str(l)]))
             self.dW['dW' + str(l)] = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T) + C/m * self.W['W' + str(l)]
             self.db['db' + str(l)] = 1/m * np.sum(self.dZ['dZ' + str(l)], axis=1, keepdims=True)
 
