@@ -35,7 +35,7 @@ class NeuralNetwork():
 
     def get_cost(self, Y, C=0):
         m = Y.shape[1]
-        logprobs = Y * np.log(self.A['A' + str(self.L)]) + (1 - Y) * np.log(1 - self.A['A' + str(self.L)])
+        logprobs = np.multiply(Y, np.log(self.A['A' + str(self.L)])) + np.multiply(1 - Y, np.log(1 - self.A['A' + str(self.L)]))
         log_term = -1/m * np.sum(logprobs)
         # IF WITH REGULARIZATION
         if C != 0:
@@ -48,17 +48,20 @@ class NeuralNetwork():
         # IF NO REGULARIZATION
         return log_term
 
-    def forward_propagation(self, X, activation='relu'):
+    def forward_propagation(self, X, keep_prob=1):
         self.Z = {}
         self.A = {}
         self.A['A0'] = X
         for l in range(1, self.L):
             self.Z['Z' + str(l)] = np.dot(self.W['W' + str(l)], self.A['A' + str(l-1)]) + self.b['b' + str(l)]
-            self.A['A' + str(l)] = self.relu(self.Z['Z' + str(l)])
+            Al = self.relu(self.Z['Z' + str(l)])
+            dl = np.random.rand(Al.shape[0], Al.shape[1]) < keep_prob
+            Al = np.multiply(Al, dl) / keep_prob
+            self.A['A' + str(l)] = Al
         self.Z['Z' + str(self.L)] = np.dot(self.W['W' + str(self.L)], self.A['A' + str(self.L-1)]) + self.b['b' + str(self.L)]
         self.A['A' + str(self.L)] = self.sigmoid(self.Z['Z' + str(self.L)])
 
-    def backward_propagation(self, Y, C=0, activation='relu'):
+    def backward_propagation(self, Y, C=0):
         m = Y.shape[1]
         self.dZ = {}
         self.dA = {}
@@ -80,7 +83,7 @@ class NeuralNetwork():
             self.W['W' + str(l)] = self.W['W' + str(l)] - alpha * self.dW['dW' + str(l)]
             self.b['b' + str(l)] = self.b['b' + str(l)] - alpha * self.db['db' + str(l)]
 
-    def train(self, X_train, y_train, epochs, alpha=0.01, activation='relu', C=0, keep_prob=1, random_state=None, verbose=0):
+    def fit(self, X_train, y_train, epochs, alpha=0.01, activation='relu', C=0, keep_prob=1, random_state=None, verbose=0):
         # SET RANDOM STATE
         if random_state != None:
             np.random.seed(random_state)
@@ -89,12 +92,6 @@ class NeuralNetwork():
         self.W = {}
         self.b = {}
         for l in range(1, len(self.layer_dims)):
-#            if activation.lower() == 'relu':
-#                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
-#            elif activation.lower() == 'tanh':
-#                self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) / np.sqrt(1 / self.layer_dims[l-1])
-#            elif activation.lower() == 'other':
-#                pass
             self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
             self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
 
@@ -102,7 +99,7 @@ class NeuralNetwork():
 
         # GRADIENT DESCENT
         for i in range(1, epochs+1):
-            self.forward_propagation(X_train)
+            self.forward_propagation(X_train, keep_prob=keep_prob)
             self.backward_propagation(y_train, C=C)
             self.update_parameters(alpha)
             cost = self.get_cost(y_train, C)
