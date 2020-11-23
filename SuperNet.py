@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -32,6 +33,24 @@ class NeuralNetwork():
         dadz = np.zeros(z.shape)
         dadz[z > 0] = 1
         return dadz
+
+    def initialize_parameters(self, optimizer='adam', random_state=0):
+        np.random.seed(random_state)
+
+        self.W = {}
+        self.b = {}
+        for l in range(1, self.L + 1):
+            self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
+            self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
+
+        if optimizer == 'adam':
+            self.V = {}
+            self.S = {}
+            for l in range(1, self.L + 1):
+                self.V['dW' + str(l)] = np.zeros(self.W['W' + str(l)].shape)
+                self.V['db' + str(l)] = np.zeros(self.b['b' + str(l)].shape)
+                self.S['dW' + str(l)] = np.zeros(self.W['W' + str(l)].shape)
+                self.S['db' + str(l)] = np.zeros(self.b['b' + str(l)].shape)
 
     def get_cost(self, Y, C=0):
         m = Y.shape[1]
@@ -81,38 +100,107 @@ class NeuralNetwork():
             self.dW['dW' + str(l)] = 1/m * np.dot(self.dZ['dZ' + str(l)], self.A['A' + str(l-1)].T) + C/m * self.W['W' + str(l)]
             self.db['db' + str(l)] = 1/m * np.sum(self.dZ['dZ' + str(l)], axis=1, keepdims=True)
 
-    def update_parameters(self, alpha):
-        for l in range(1, self.L+1):
-            self.W['W' + str(l)] = self.W['W' + str(l)] - alpha * self.dW['dW' + str(l)]
-            self.b['b' + str(l)] = self.b['b' + str(l)] - alpha * self.db['db' + str(l)]
+    def update_parameters(self, alpha, optimizer='adam'):
+        if optimizer.lower() == 'gd':
+            for l in range(1, self.L+1):
+                self.W['W' + str(l)] = self.W['W' + str(l)] - alpha * self.dW['dW' + str(l)]
+                self.b['b' + str(l)] = self.b['b' + str(l)] - alpha * self.db['db' + str(l)]
 
-    def fit(self, X_train, y_train, epochs, alpha=0.01, activation='relu', C=0, keep_prob=1, random_state=None, verbose=0):
-        # SET RANDOM STATE
-        if random_state != None:
-            np.random.seed(random_state)
+        elif optimizer.lower() == 'adam':
+            beta1 = 0.9
+            beta2 = 0.999
+            epsilon = 1e-8
 
-        # WEIGHT INITIALIZATION
-        self.W = {}
-        self.b = {}
-        for l in range(1, len(self.layer_dims)):
-            self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
-            self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
+            V_corrected = {}
+            S_corrected = {}
 
+            for l in range(1, self.L + 1):
+                self.V['dW' + str(l)] = beta1 * self.V['dW' + str(l)] + (1 - beta1) * self.dW['dW' + str(l)]
+                self.V['db' + str(l)] = beta1 * self.V['db' + str(l)] + (1 - beta1) * self.db['db' + str(l)]
+                V_corrected['dW' + str(l)] = self.V['dW' + str(l)] / (1 - np.power(beta1, self.t))
+                V_corrected['db' + str(l)] = self.V['db' + str(l)] / (1 - np.power(beta1, self.t))
+
+                self.S['dW' + str(l)] = beta2 * self.S['dW' + str(l)] + (1 - beta2) * np.square(self.dW['dW' + str(l)])
+                self.S['db' + str(l)] = beta2 * self.S['db' + str(l)] + (1 - beta2) * np.square(self.db['db' + str(l)])
+                S_corrected['dW' + str(l)] = self.S['dW' + str(l)] / (1 - np.power(beta2, self.t))
+                S_corrected['db' + str(l)] = self.S['db' + str(l)] / (1 - np.power(beta2, self.t))
+
+                self.W['W' + str(l)] = self.W['W' + str(l)] - alpha * np.divide(V_corrected['dW' + str(l)], np.sqrt(S_corrected['dW' + str(l)]) + epsilon)
+                self.b['b' + str(l)] = self.b['b' + str(l)] - alpha * np.divide(V_corrected['db' + str(l)], np.sqrt(S_corrected['db' + str(l)]) + epsilon)
+
+    def random_batches(self, X, Y, batch_size=128, random_state=0):
+        np.random.seed(random_state)
+        m = X.shape[-1]
+        self.batches = []
+
+        permutation = list(np.random.permutation(m))
+        X_shuffled = X[:, permutation]
+        Y_shuffled = Y[:, permutation].reshape(1, m)
+
+        num_batches = math.floor(m / batch_size)
+        for k in range(num_batches):
+            X_batch = X_shuffled[:, k * batch_size:(k + 1) * batch_size]
+            Y_batch = Y_shuffled[:, k * batch_size:(k + 1) * batch_size]
+            batch = (X_batch, Y_batch)
+            self.batches.append(batch)
+
+        if m % batch_size != 0:
+            X_batch = X_shuffled[:, batch_size * num_batches:]
+            Y_batch = Y_shuffled[:, batch_size * num_batches:]
+            batch = (X_batch, Y_batch)
+            self.batches.append(batch)
+
+#        return batches
+
+    def fit(self, X_train, y_train, epochs, alpha=0.01, C=0, keep_prob=1, batch_size=128, optimizer='adam', random_state=0, verbose=0):
+        # TEMPORARY FIX FOR MINI BATCH GD
+        m = X_train.shape[1]
+        batch_size = m
+
+        self.initialize_parameters(optimizer=optimizer, random_state=random_state)
         self.costs = []
 
+        self.t = 1
+        seed = 10
         # GRADIENT DESCENT
-        for i in range(1, epochs+1):
-            self.forward_propagation(X_train, keep_prob=keep_prob)
-            self.backward_propagation(y_train, C=C, keep_prob=keep_prob)
-            self.update_parameters(alpha)
-            cost = self.get_cost(y_train, C)
-            self.costs.append(cost)
+        if batch_size == X_train.shape[1]:
+            for i in range(1, epochs+1):
+                self.forward_propagation(X_train, keep_prob=keep_prob)
+                self.backward_propagation(y_train, C=C, keep_prob=keep_prob)
+                self.update_parameters(alpha, optimizer=optimizer)
+                cost = self.get_cost(y_train, C)
+                self.costs.append(cost)
+
+                # PRINT COST FOR FEEDBACK WHILE TRAINING
+                if verbose != 0:
+                    verbose = int(verbose)
+                    if i % verbose == 0:
+                        print(f'Epoch: {i}/{epochs}. Cost: {cost}')
+
+        else:
+            for i in range(1, epochs+1):
+                seed = seed + 1
+                self.random_batches(X_train, y_train, batch_size=batch_size, random_state=seed)
+                for batch in self.batches:
+                    (X_batch, Y_batch) = batch
+                    self.forward_propagation(X_batch, keep_prob=keep_prob)
+                    self.backward_propagation(Y_batch, C=C, keep_prob=keep_prob)
+                    self.update_parameters(alpha, optimizer=optimizer)
+                    self.t = self.t + 1
+                    cost = self.get_cost(Y_batch, C)
+                    self.costs.append(cost)
+
+#            self.forward_propagation(X_train, keep_prob=keep_prob)
+#            self.backward_propagation(y_train, C=C, keep_prob=keep_prob)
+#            self.update_parameters(alpha, optimizer=optimizer)
+#            cost = self.get_cost(y_train, C)
+#            self.costs.append(cost)
 
             # PRINT COST FOR FEEDBACK WHILE TRAINING
-            if verbose != 0:
-                verbose = int(verbose)
-                if i % verbose == 0:
-                    print(f'Epoch: {i}/{epochs}. Cost: {cost}')
+                if verbose != 0:
+                    verbose = int(verbose)
+                    if i % verbose == 0:
+                        print(f'Epoch: {i}/{epochs}. Cost: {cost}')
         print(f'Training done! Cost after {epochs} epochs: {self.costs[-1]}')
 
     def predict(self, X_test):
