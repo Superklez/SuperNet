@@ -150,8 +150,6 @@ class NeuralNetwork():
             batch = (X_batch, Y_batch)
             self.batches.append(batch)
 
-#        return batches
-
     def fit(self, X_train, y_train, epochs, alpha=0.01, C=0, keep_prob=1, batch_size=128, optimizer='adam', random_state=0, verbose=0):
         # TEMPORARY FIX FOR MINI BATCH GD
         m = X_train.shape[1]
@@ -189,12 +187,6 @@ class NeuralNetwork():
                     self.t = self.t + 1
                     cost = self.get_cost(Y_batch, C)
                     self.costs.append(cost)
-
-#            self.forward_propagation(X_train, keep_prob=keep_prob)
-#            self.backward_propagation(y_train, C=C, keep_prob=keep_prob)
-#            self.update_parameters(alpha, optimizer=optimizer)
-#            cost = self.get_cost(y_train, C)
-#            self.costs.append(cost)
 
             # PRINT COST FOR FEEDBACK WHILE TRAINING
                 if verbose != 0:
