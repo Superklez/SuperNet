@@ -40,7 +40,7 @@ class NeuralNetwork():
         self.W = {}
         self.b = {}
         for l in range(1, self.L + 1):
-            self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / self.layer_dims[l-1])
+            self.W['W' + str(l)] = np.random.randn(self.layer_dims[l], self.layer_dims[l-1]) * np.sqrt(2 / (self.layer_dims[l-1] + self.layer_dims[l]))
             self.b['b' + str(l)] = np.zeros((self.layer_dims[l], 1))
 
         if optimizer == 'adam':
